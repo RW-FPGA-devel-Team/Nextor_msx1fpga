@@ -42,7 +42,7 @@ HWDS = 1
 ;   0 for drive-based
 ;   1 for device-based
 
-DRV_TYPE	equ	0
+DRV_TYPE	equ	1
 
 ;Hot-plug devices support (device-based drivers only):
 ;   0 for no hot-plug support
