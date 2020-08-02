@@ -244,7 +244,7 @@ SING_DBL  equ     7820h ;"1-Single side / 2-Double side"
 ;    bit 2: 1 if the driver provides configuration
 ;             (implements the DRV_CONFIG routine)
 
-        db 1+(2*DRV_HOTPLUG)+4
+        db DRV_TYPE+(2*DRV_HOTPLUG)+4
 
 
 ;-----------------------------------------------------------------------------
