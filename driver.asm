@@ -1394,7 +1394,7 @@ WAIT_RESP_FE:
 	push	bc
 	call	WAIT_RESP_NO_FF				; esperar resposta diferente de $FF
 	pop		bc
-	cp		$FE							; resposta é $FE ?
+	cp		$FE							; resposta ï¿½ $FE ?
 	ret	z								; sim, retornamos com carry=0
 	djnz	.loop
 	scf									; erro, carry=1
@@ -1447,13 +1447,13 @@ writeBlock:
 	exx
 	ld	a, CMD55	; Multiplos blocos, mandar ACMD23 com total de blocos
 	call	SD_SEND_CMD_NO_ARGS
-	ld	a, ACMD23
-	ld	bc, 0
-	ld	d, c
-	ld	e,ixh		; e=Number of blocks to write
-	call	SD_SEND_CMD
-	or	a
-	jr	nz,.erroEscritaBlocoR	; erro no ACMD23
+	;ld	a, ACMD23
+	;ld	bc, 0
+	;ld	d, c
+	;ld	e,ixh		; e=Number of blocks to write
+	;call	SD_SEND_CMD
+	;or	a
+	;jr	nz,.erroEscritaBlocoR	; erro no ACMD23
 	exx
 	ld	a, CMD25	; CMD25 = write multiple blocks
 	call	SD_SEND_CMD
@@ -1473,11 +1473,11 @@ writeBlock:
 	nop
 	out	(c),a
 	call	WAIT_RESP_NO_FF	; esperar cartao
-	and	$1F		; testa bits erro
-	cp	5
-	jr	nz,.erroEscritaBlocoZ	; resposta errada, informar erro
+	;and	$1F		; testa bits erro
+	;cp	5
+	;jr	nz,.erroEscritaBlocoZ	; resposta errada, informar erro
 	call	WAIT_RESP_NO_00	; esperar cartao
-	jr	c,.erroEscritaBlocoZ
+	;jr	c,.erroEscritaBlocoZ
 	dec	ixh		; nblocks=nblocks-1
 	jp	nz,.loop
 .loopend:
@@ -1522,7 +1522,9 @@ writeBlock:
 	or	a
 	jr	z,.esp
 .fim:
-	xor	a		; zera carry e informa nenhum erro
+	;xor	a		; zera carry e informa nenhum erro
+	ld a,0
+	
 terminaLeituraEscritaBloco:
 	push	af
 	call	disableCards	; desabilitar todos os cartoes
