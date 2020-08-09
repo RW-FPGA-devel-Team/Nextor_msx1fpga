@@ -326,8 +326,11 @@ DRV_TIMI:
 ;     get two allocated drives.)
 
 DRV_INIT:
-	or	a		; testar se eh primeira ou segunda chamada
-	jp	z, .primeira_chamada
+	or	a		; primeira chamada do Nextor
+	;ld	hl,WRKAREA
+	ld	hl, 41		; informar que nao precisamos de RAM
+	ret z
+
 
 ; 2. chamada:
 	call	BIOS_INITXT	; inicializar tela
@@ -352,7 +355,7 @@ DRV_INIT:
 	jr	.wait
 .naoVazio:
 	call	detectaCartao	; tem cartao no slot, inicializar e detectar
-	jr	nc, .detectou
+	jr	nc, .detectou ; RAMPA
 	call	desabilitaSDs
 	ld	de, strNaoIdentificado
 	call	printString
@@ -396,10 +399,6 @@ DRV_INIT:
 	jr	nz, .wait
 	ret
 
-.primeira_chamada:
-	xor	a		; primeira chamada do Nextor
-	ld	hl, 0		; informar que nao precisamos de RAM
-	ret
 
 ;-----------------------------------------------------------------------------
 ;
@@ -497,8 +496,8 @@ DRV_DIRECT4:
 
 
 DRV_CONFIG:
-        ld a,1
-        ret
+        ;ld a,1
+        ;ret
 
         dec a
         jr z,DRV_CONFIG_1
@@ -508,17 +507,12 @@ DRV_CONFIG:
         ret
 
 DRV_CONFIG_1:
-        ld a,b
         ld b,2
         or a
-        ret z
-        xor a
-        dec b
         ret
 
 DRV_CONFIG_2:
-        ld b,c
-        inc b
+        ld b,1
         ld c,1
         xor a
         ret
@@ -986,7 +980,7 @@ calculaCIDoffset:
 	ld	a, (WRKAREA.NUMSD)
 	dec	a
 	jr	z, .c1
-	ld	hl, WRKAREA.BCID2
+	;ld	hl, WRKAREA.BCID2
 .c1:
 	push	hl		
 	pop	ix		; vamos colocar HL em IX
@@ -1055,7 +1049,8 @@ detectaCartao:
 	and	$C0		; testa versao do registro CSD
 	jr	z, .calculaCSD1
 	cp	$40
-	jr	z, .calculaCSD2
+	;jr	z, .calculaCSD2
+	jr .calculaCSD2
 	scf			; versao do registro CSD nao reconhecida, informa erro na deteccao
 	ret
 
@@ -1229,30 +1224,31 @@ lerBlocoCxD:
 	or	a
 	jr	desabilitaSDs
 
+
 ; ------------------------------------------------
 ; Algoritmo para inicializar um cartao SD
 ; Destroi AF, B, DE
 ; ------------------------------------------------
-iniciaSD:
-	call	desabilitaSDs
 
-	ld	b, 10		; enviar 80 pulsos de clock com cartao desabilitado
-enviaClocksInicio:
-	ld	a, $FF		; manter MOSI em 1
-	out	(PORTSPI), a
-	djnz	enviaClocksInicio
-	call	enableSD	; ativar cartao atual
-	ld	b, 8		; 8 tentativas para CMD0
+iniciaSD:
+        ld              a, $FF
+        out             (PORTCFG), a                            ; disable SD card
+        ld              b, 10                                           ; send 80 clock pulses with SD card not selected
+.loop:
+        out             (PORTSPI), a
+        djnz    .loop
+        call    enableSD                                        ; enable actual SD card
+        ld              b, 8                                            ; 8 tries for CMD0
 SD_SEND_CMD0:
-	ld	a, CMD0		; primeiro comando: CMD0
-	ld	de, 0
-	push	bc
-	call	SD_SEND_CMD_2_ARGS_TEST_BUSY
-	pop	bc
-	ret	nc		; retorna se cartao respondeu ao CMD0
-	djnz	SD_SEND_CMD0
-	scf			; cartao nao respondeu ao CMD0, informar erro
-	; fall throw
+        ld              a, CMD0                                         ; first command: CMD0
+        ld              de, 0
+        push    bc
+        call    SD_SEND_CMD_2_ARGS_TEST_BUSY
+        pop             bc
+        ret     nc                                                              ; SD card accepts CMD0, return
+        djnz    SD_SEND_CMD0
+        scf                                                                     ; SD card not accepts CMD0, error
+        ; fall throw
 
 ; ------------------------------------------------
 ; Desabilitar (de-selecionar) todos os cartoes
@@ -1773,6 +1769,8 @@ tblFabricantes:
 	db	"SiliconPower",0
 	db	39
 	db	"Verbatim",0
+	db  62
+	db "RetroWiki VHD",0
 	db	65
 	db	"OKI",0
 	db	115
@@ -1811,26 +1809,30 @@ strSDV2:
 ; RAM area
 	org		$7000
 
-; Work area variables
-WRKAREA:
-.BCSD 		ds 16	; Card Specific Data
-.BCID1		ds 16	; Card-ID of card1
-.BCID2		ds 16	; Card-ID of card2
-.NUMSD		ds 1	; Currently selected card: 1 or 2
-.NUMBLOCKS	ds 1	; Number of blocks in multi-block operations
-.BLOCKS1	ds 3	; 3 bytes. Size of card1, in blocks.
-.BLOCKS2	ds 3	; 3 bytes. Size of card2, in blocks.
-.TEMP		ds 1	; Temporary data
-
- IF HWDS = 0
-WRKAREA.FLAGS		ds 1	; Flags for soft-diskchange
- ENDIF
 
 ;-----------------------------------------------------------------------------
 ;
 ; End of the driver code
+; Work area variables
+WRKAREA:
+WRKAREA.BCSD 		ds 16	; Card Specific Data
+WRKAREA.BCID1		ds 16	; Card-ID of card1
+;WRKAREA.BCID2		ds 16	; Card-ID of card2
+WRKAREA.NUMSD		ds 1	; Currently selected card: 1 or 2
+WRKAREA.NUMBLOCKS	ds 1	; Number of blocks in multi-block operations
+WRKAREA.BLOCKS1	    ds 3	; 3 bytes. Size of card1, in blocks.
+WRKAREA.BLOCKS2	    ds 3	; 3 bytes. Size of card2, in blocks.
+WRKAREA.TEMP		ds 1	; Temporary data
+
+ IF HWDS = 0
+FLAGS		ds 1	; Flags for soft-diskchange
+ ENDIF
+; ENDS
+
+
 
 DRV_END:
 
-	ds	3ED0h-(DRV_END-DRV_START), $FF
+	ds	3ED0h-(DRV_END-DRV_START)
+	end
 
